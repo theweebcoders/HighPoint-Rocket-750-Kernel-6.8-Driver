@@ -87,14 +87,14 @@ The following steps outline the process to modernize the Rocket 750 driver for *
 Each step is a **standalone task** that can be worked on independently. The goal is to **systematically replace outdated code** while keeping track of completed work.  
 
 ### **Compatibility Layer & Build Fixes**  
-**✅ Status: Partially Completed (Makefile.def updated, build process partially working)**  
+**✅ Status: Partially Completed (Makefile.def updated, build process partially working, compat.h planned for macro stubs)**  
 
 **Create a Compatibility Header (`compat.h`)**
    - **Problem:** The driver references missing macros/functions (`virt_to_bus`, `SCSI_DISKx_MAJOR`, `CHECK_CONDITION`, etc.).
    - **Solution:** Create `compat.h` to define stubs for missing macros and deprecated functions.
    - **Tasks:**  
-     - **Define a replacement for `virt_to_bus()`** (e.g., use `virt_to_phys()` for now).  
-     - **Stub out `SCSI_DISKx_MAJOR` macros** (set them to `0`).  
+     - **Define a replacement for `virt_to_bus()`** (`dma_map_single()` for buffer mappings).  
+     - **Stub out `SCSI_DISKx_MAJOR` macros** (or remove them entirely).  
      - **Define `CHECK_CONDITION`, `GOOD`, `DRIVER_SENSE`, etc.** if missing.  
      - **Stub out `scsi_done()` calls.**  
      - **Include `compat.h` in `osm_linux.h` and other relevant files.**  
@@ -103,13 +103,13 @@ Each step is a **standalone task** that can be worked on independently. The goal
 **Update the Build System (Done)**
    - **✅ Status: Completed (Makefile.def updated, build errors partially fixed).**
    - **Remaining Work:**  
-     - Verify Makefile paths to ensure `KERNELDIR` is correctly set.  
-     - Run `make` after all compatibility fixes are applied to check for new errors.  
+     - Ensure Makefile paths are correct (`KERNELDIR` and `PWD` consistency).  
+     - Run `make` after all compatibility fixes to check for new errors.  
 
 ---
 
 ### **Fixing Obsolete DMA & PCI Calls**
-**✅ Status: Not Started**  
+**✅ Status: In Progress**  
 
 **Replace `virt_to_bus()` With DMA API**  
    - **Problem:** `virt_to_bus()` was removed from the kernel long ago.  
@@ -126,8 +126,8 @@ Each step is a **standalone task** that can be worked on independently. The goal
      - Ensure `dma_unmap_single()` is properly used to clean up DMA mappings.  
      - Verify all changes compile correctly.  
 
-4. **Update PCI Handling (`pci_set_dma_mask`)**  
-   - **Problem:** `pci_set_dma_mask()` isn’t called properly, causing errors.  
+**Update PCI Handling (`pci_set_dma_mask`)**  
+   - **Problem:** `pci_set_dma_mask()` is deprecated; we should use `dma_set_mask_and_coherent()`.  
    - **Solution:** Ensure that `pci_set_dma_mask()` is used correctly with error handling.  
    - **Tasks:**  
      - Locate all calls to `pci_set_dma_mask()`.  
@@ -139,6 +139,19 @@ Each step is a **standalone task** that can be worked on independently. The goal
        }
        ```
      - Verify that the driver correctly initializes PCI DMA.  
+
+**Fix `blkdev_get()`, `blkdev_put()`, and `bdget()`**  
+   - **Problem:** Some block device operations have changed in modern kernels.  
+   - **Solution:** Ensure correct function replacements:  
+     ```c
+     struct block_device *b = blkdev_get_by_dev(bdev->bd_dev, FMODE_READ, NULL);
+     if (IS_ERR(b)) return PTR_ERR(b);
+     ```
+     - Replace `blkdev_put()` calls with:  
+       ```c
+       blkdev_put(bdev, FMODE_READ);
+       ```
+     - Remove `revalidate_disk()` calls (automatic in modern kernels).  
 
 ---
 
@@ -185,15 +198,15 @@ Each step is a **standalone task** that can be worked on independently. The goal
 ---
 
 ### **Removing Unnecessary RAID/Array Code**
-**✅ Status: Not Started**  
+**✅ Status: In Progress**  
 
 **Remove or Refactor RAID Handling (`pVDev->u.array`)**  
-   - **Problem:** The driver references old RAID structures (`pVDev->u.array`), which may not be needed.  
-   - **Solution:** If only JBOD is required, remove RAID-related logic.  
+   - **Problem:** The driver references old RAID structures (`pVDev->u.array`), but this may be unnecessary if only JBOD is required.  
+   - **Solution:** If only JBOD support is required, remove RAID-related logic entirely.  
    - **Tasks:**  
      - Identify all uses of `pVDev->u.array`, `pVDev->u.partition`, etc.  
-     - If RAID is **not needed**, remove references.  
-     - If RAID **is needed**, ensure the logic aligns with the modern SCSI stack.  
+     - **If RAID is not needed**, remove references entirely.  
+     - **If RAID is needed**, update structures to align with modern SCSI layer RAID management.  
 
 ---
 
@@ -204,14 +217,16 @@ Each step is a **standalone task** that can be worked on independently. The goal
    - **Tasks:**  
      - Compile the driver (`make -j$(nproc)`).  
      - Load the module (`insmod r750.ko`).  
-     - Run `dmesg` to check for errors.  
+     - Run `dmesg` to check for kernel errors, SCSI issues, or segmentation faults.  
      - Run `lsblk` and `fdisk -l` to verify drive detection.  
+     - Test drive initialization using `hdparm -I /dev/sdX` to check ATA commands.  
 
  **Update Documentation & Changelog**  
    - **Tasks:**  
      - Log each fix in `CHANGELOG.md`.  
      - Add inline comments explaining major changes.  
 
+---
 
 ## References
 
