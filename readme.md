@@ -309,6 +309,16 @@ I don’t care how long it takes. I’m going to get this driver working on Linu
 
   This is a community effort, so if you want to see Rocket 750s working on modern Linux, let’s make it happen.
 
+Q: You say you don’t know what you’re doing, but this README has a very clear roadmap. What’s the deal?
+
+  Great question. The roadmap is almost entirely made up.
+
+  I mean, it’s based on research, AI suggestions, and general problem-solving logic, but I don’t actually know if any of this will work. I could spend months following this roadmap step by step and end up exactly where I started.
+
+  I put this roadmap together because I needed some structure to avoid wandering in circles, but if you look at it and think, “Wow, this is all wrong,” please tell me. Rip it apart. Rewrite it. If you know a better way, do it.
+
+  I fully expect that a good chunk of this roadmap is nonsense. That’s fine. I’ll keep iterating until something works.
+
 **Q: Aren’t you that idiot who tried to put commercials back into commercial-free anime viewing?**
 
   Why yes, yes I am. Thank you for recognizing my contributions to reverse progress. While others were busy making streaming more convenient, I was deep in the coding mines, slamming my head against Python to make Plex feel like 2004 again.
