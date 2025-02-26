@@ -34,20 +34,31 @@ This repository contains the **open-source driver for the HighPoint Rocket 750 H
   - ✅ **FreeBSD**
 
 ---
-
 ## Current Limitations
 
 ### 🚨 Why the Driver Fails on Kernel 6.8
 
-1. **Kernel Version Check Blocks 6.x:**  
-   - The **Makefile.def** explicitly disallows any kernel above **5.x**.
-   - It must be modified to allow building under **6.8**.
+**1.	Deprecated or Removed Kernel Functions:**
 
-2. **Deprecated or Removed Kernel Functions:**  
-   - Several functions (e.g. `revalidate_disk()`, `blkdev_get()`, `bdget()`) and legacy fields in structures (e.g. in `scsi_cmnd` and `scsi_host_template`) were removed or significantly changed.
+•	Several functions (revalidate_disk(), blkdev_get(), bdget()) and legacy fields in structures (scsi_cmnd, scsi_host_template) were removed or significantly changed.
 
-3. **Changes to PCI and SCSI Handling:**  
-   - The driver relies on legacy PCI and SCSI interfaces that have been replaced by modern APIs.
+**2.	Outdated PCI and SCSI Handling:**
+
+•	The driver relies on legacy PCI and SCSI interfaces that have been replaced by modern APIs.
+•	virt_to_bus() is gone and must be replaced with dma_map_single().
+•	scsi_done() is deprecated and needs to be removed in favor of returning status codes.
+
+**3.	Block Device and Major Number Issues:**
+•	SCSI_DISKx_MAJOR macros were removed long ago, but the driver still references them.
+•	The driver uses outdated block device functions like blkdev_get() and bdget(), which need to be replaced with blkdev_get_by_dev().
+
+**4.	Obsolete RAID and Array Logic (Possibly Unnecessary):**
+•	The driver references old RAID structures (pVDev->u.array, pVDev->u.partition), which may no longer be needed.
+•	If only JBOD is required, RAID-related logic should be removed.
+
+✅ What’s Already Fixed:
+
+•	The kernel version check in Makefile.def was removed, so the driver no longer blocks building on kernel 6.x.
 
 ---
 
