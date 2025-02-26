@@ -216,3 +216,31 @@ But if no one else is going to do it, then I guess it’s down to me.
 I don’t care how long it takes. I’m going to get this driver working on Linux 6.8. Even if it’s purely by accident.
 
 ---
+
+FAQ
+
+Q: Why are you doing this?
+
+Because I’m cheap.
+
+Q: No, really. Why?
+
+I bought a 45 Drives 60-bay server from some guy on Facebook Marketplace. It came with HighPoint Rocket 750 HBAs, which are great except for one problem:
+	•	The drivers only work up to Linux Kernel 5.x
+	•	Unraid is Kernel 6.8
+	•	I use consumer-grade hardware with only two PCIe x8 slots.
+
+If I want modern HBAs, I need three or four of them—which would cost a stupid amount of money and require new cables that don’t exist in the quantity I need.
+
+So instead of buying new hardware, I’ve decided to make the Rocket 750 drivers work on Linux 6.8 (despite having no experience with kernel drivers).
+
+Q: How long will this take?
+
+Unknown. My strategy is simple: bash my head against the code until it compiles and runs. If I make enough commits, eventually something has to work, right?
+
+Q: Can I help?
+	•	If you know how to fix it, PR your changes on GitHub.
+	•	If you have patches for older kernels, I’d love to see them.
+	•	If you want to just watch me suffer, fair enough.
+
+This is a community effort, so if you want to see Rocket 750s working on modern Linux, let’s make it happen.
