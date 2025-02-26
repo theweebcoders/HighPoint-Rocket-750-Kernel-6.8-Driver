@@ -33,51 +33,37 @@ This repository contains the **open-source driver for the HighPoint Rocket 750 H
   - ✅ **Fedora**
   - ✅ **FreeBSD**
 
----
-## Current Limitations
+## **Current Issues & Compatibility Challenges**  
 
-### 🚨 Why the Driver Fails on Kernel 6.8
+The **Rocket 750 driver** was originally written for **kernels 2.4/2.6** and patched to support **kernel 5.2.x**, but it **fails to compile on Linux 6.8** due to major changes in the kernel. Below is a structured breakdown of **what's broken and why.**  
 
-**1.	Deprecated or Removed Kernel Functions:**
+### **1. Deprecated or Removed Kernel Functions**  
+  - Several functions were removed or significantly changed:  
+    - `revalidate_disk()`, `blkdev_get()`, and `bdget()` no longer exist.  
+    - The `SCp` field was removed from `struct scsi_cmnd`, breaking driver-private data storage.  
+    - `scsi_done()` is **deprecated** and must be removed in favor of return-based command completion.  
 
-•	Several functions (revalidate_disk(), blkdev_get(), bdget()) and legacy fields in structures (scsi_cmnd, scsi_host_template) were removed or significantly changed.
+### **2. Outdated PCI, DMA, and SCSI Handling**  
+  - The driver relies on **legacy PCI and SCSI interfaces** that have been replaced by modern APIs.  
+  - `virt_to_bus()` is **gone** and must be replaced with `dma_map_single()`.  
+  - `pci_set_dma_mask()` handling needs to be updated to avoid breaking DMA setup.  
 
-**2.	Outdated PCI and SCSI Handling:**
+### **3. Block Device & Major Number Issues**  
+  - `SCSI_DISKx_MAJOR` macros were removed long ago, but the driver still references them.  
+  - The driver uses outdated block device functions like `blkdev_get()` and `bdget()`, which need to be replaced with `blkdev_get_by_dev()`.  
 
-•	The driver relies on legacy PCI and SCSI interfaces that have been replaced by modern APIs.
-•	virt_to_bus() is gone and must be replaced with dma_map_single().
-•	scsi_done() is deprecated and needs to be removed in favor of returning status codes.
+### **4. Obsolete RAID & Array Logic (Possibly Unnecessary)**  
+  - The driver references **old RAID structures** (`pVDev->u.array`, `pVDev->u.partition`), which may no longer be needed.  
+  - If **only JBOD is required**, RAID-related logic should be **removed** to simplify the codebase.  
 
-**3.	Block Device and Major Number Issues:**
-•	SCSI_DISKx_MAJOR macros were removed long ago, but the driver still references them.
-•	The driver uses outdated block device functions like blkdev_get() and bdget(), which need to be replaced with blkdev_get_by_dev().
+✅ **What’s Already Fixed:**  
+  - **The kernel version check in `Makefile.def` was updated**, so the driver no longer blocks compilation on kernel 6.x.  
+  - **Build errors have been identified and documented**, allowing for targeted fixes.  
 
-**4.	Obsolete RAID and Array Logic (Possibly Unnecessary):**
-•	The driver references old RAID structures (pVDev->u.array, pVDev->u.partition), which may no longer be needed.
-•	If only JBOD is required, RAID-related logic should be removed.
-
-✅ What’s Already Fixed:
-
-•	The kernel version check in Makefile.def was removed, so the driver no longer blocks building on kernel 6.x.
-
----
-
-## Compatibility Considerations
-
-Community reports indicate that while the original driver (v1.2.14) was patched to support up to kernel 5.2.x, several changes within the 4.x and 5.x series have introduced challenges:
-
-- **SCSI Subsystem:**  
-  - Legacy SCSI codes (e.g. `CHECK_CONDITION`, `GOOD`, etc.) were replaced with SAM codes somewhere in the 4.x series, leading to compile-time issues on newer kernels.
-
-- **Kernel 5.x and Beyond:**  
-  - Changes in build mechanisms (e.g. switching from `SUBDIR` to `M` in 5.3).
-  - Modifications to block device management (e.g. merging of `bdget()` and `blkdev_get()` into `blkdev_get_by_dev()` and removal of `revalidate_disk()` in 5.8).
-  - Updates in the `scsi_host_template` structure (e.g. removal of `unchecked_isa_dma` in 5.13) and legacy status codes (removed in 5.14).
-
-- **Practical Recommendation:**  
-  - Although some community patches exist for kernel 5.x (e.g. a patch for 5.15), these may require further testing.
-  - For maximum compatibility without extensive patching, a Linux distribution with a 4.x kernel (for example, **Ubuntu 16.04 LTS** with kernel 4.4) is recommended.
-  - **Security Note:** Using an older distribution requires additional security measures (network isolation, strict firewall rules, minimal services) due to the end-of-life status of such distributions.
+🚧 **What Still Needs Work:**  
+  - **All SCSI and block device calls need to be updated to modern APIs.**  
+  - **DMA and PCI handling must be rewritten to avoid deprecated calls.**  
+  - **Any remaining RAID-specific logic should be reviewed to see if it’s necessary.**  
 
 ---
 
