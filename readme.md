@@ -244,3 +244,27 @@ Q: Can I help?
 	•	If you want to just watch me suffer, fair enough.
 
 This is a community effort, so if you want to see Rocket 750s working on modern Linux, let’s make it happen.
+
+---
+
+License (Or Lack Thereof)
+
+	“There is no license.”
+
+This project follows The Weeb Coders’ core rule:
+	•	No license.
+	•	No restrictions.
+	•	No limitations.
+	•	No attribution required.
+	•	No copyright nonsense.
+
+You can do whatever the hell you want with this code. Modify it, sell it, use it in a commercial project, burn it onto a CD and bury it in the desert—we do not care.
+
+Everything here is free.
+
+---
+
+Join Us on Discord
+
+Want to chat, contribute, or just watch the chaos unfold?
+Join The Weeb Coders on Discord: https://discord.com/invite/S7NcUdhKRD
