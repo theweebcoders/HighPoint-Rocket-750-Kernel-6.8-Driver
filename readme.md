@@ -186,3 +186,33 @@ This project is **not affiliated** with HighPoint Technologies. All patches and 
 ---
 
 By following this roadmap and keeping detailed records in the changelog, we aim to fully modernize the Rocket 750 driver so that it compiles and runs correctly on Linux Kernel 6.8 while preserving as much of the original functionality as possible. Let's begin by updating the build system and progressively modernizing each subsystem.
+
+---
+
+📢 Note from the Maintainer
+
+Okay, let’s get something out of the way right now: I have no idea what I’m doing.
+
+I don’t want anyone stumbling across this repository and thinking, “Ah, yes, a proper project by someone who knows what they’re doing.” Because this is not that.
+
+This is a complete and utter mess.
+
+I have no experience with kernel drivers. I have no experience with patching old drivers to work on new kernels. I barely know what I’m looking at half the time. I’m learning as I go, and frankly, I’m 99% sure that most of my commits are making things worse, not better.
+
+But here’s the thing:
+I am working on this. Every. Single. Day.
+
+I don’t know what I’m doing, but I’m going to keep slamming my head against this code until something, by pure statistical probability, starts working. Chaos theory. The whole “monkey typing Shakespeare” thing. If you make enough commits, eventually one of them has to work, right?
+
+So, if you actually know what you’re doing, please, for the love of everything, submit a pull request. Tell me my code is garbage. Rip apart my changes. Revert my nonsense. I do not care. You cannot hurt my feelings because I already know how bad this is.
+
+If you’re one of those people who sees this and thinks, “I could fix this in a weekend, but I don’t have time,” let me just say this:
+	•	If this is a side project for you and you can only contribute every couple of weeks, just PR your changes.
+	•	If you want to take over and you’re actually going to be active, by all means, do it.
+	•	If you just want to laugh at my suffering, honestly, fair.
+
+But if no one else is going to do it, then I guess it’s down to me.
+
+I don’t care how long it takes. I’m going to get this driver working on Linux 6.8. Even if it’s purely by accident.
+
+---
