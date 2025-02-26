@@ -33,40 +33,6 @@ This repository contains the **open-source driver for the HighPoint Rocket 750 H
   - ✅ **Fedora**
   - ✅ **FreeBSD**
 
-## **Current Issues & Compatibility Challenges**  
-
-The **Rocket 750 driver** was originally written for **kernels 2.4/2.6** and patched to support **kernel 5.2.x**, but it **fails to compile on Linux 6.8** due to major changes in the kernel. Below is a structured breakdown of **what's broken and why.**  
-
-### **1. Deprecated or Removed Kernel Functions**  
-  - Several functions were removed or significantly changed:  
-    - `revalidate_disk()`, `blkdev_get()`, and `bdget()` no longer exist.  
-    - The `SCp` field was removed from `struct scsi_cmnd`, breaking driver-private data storage.  
-    - `scsi_done()` is **deprecated** and must be removed in favor of return-based command completion.  
-
-### **2. Outdated PCI, DMA, and SCSI Handling**  
-  - The driver relies on **legacy PCI and SCSI interfaces** that have been replaced by modern APIs.  
-  - `virt_to_bus()` is **gone** and must be replaced with `dma_map_single()`.  
-  - `pci_set_dma_mask()` handling needs to be updated to avoid breaking DMA setup.  
-
-### **3. Block Device & Major Number Issues**  
-  - `SCSI_DISKx_MAJOR` macros were removed long ago, but the driver still references them.  
-  - The driver uses outdated block device functions like `blkdev_get()` and `bdget()`, which need to be replaced with `blkdev_get_by_dev()`.  
-
-### **4. Obsolete RAID & Array Logic (Possibly Unnecessary)**  
-  - The driver references **old RAID structures** (`pVDev->u.array`, `pVDev->u.partition`), which may no longer be needed.  
-  - If **only JBOD is required**, RAID-related logic should be **removed** to simplify the codebase.  
-
-✅ **What’s Already Fixed:**  
-  - **The kernel version check in `Makefile.def` was updated**, so the driver no longer blocks compilation on kernel 6.x.  
-  - **Build errors have been identified and documented**, allowing for targeted fixes.  
-
-🚧 **What Still Needs Work:**  
-  - **All SCSI and block device calls need to be updated to modern APIs.**  
-  - **DMA and PCI handling must be rewritten to avoid deprecated calls.**  
-  - **Any remaining RAID-specific logic should be reviewed to see if it’s necessary.**  
-
----
-
 ## Codebase Structure
 
 ```
@@ -95,7 +61,38 @@ The **Rocket 750 driver** was originally written for **kernels 2.4/2.6** and pat
 │           ├── config.c  # Driver initialization and configuration logic
 │           └── Makefile  # Updated for kernel 6.8 build paths and source file adjustments
 └── install.sh           # Top-level installer script
+
 ```
+
+## **Current Issues & Compatibility Challenges**  
+
+The **Rocket 750 driver** was originally written for **kernels 2.4/2.6** and patched to support **kernel 5.2.x**, but it **fails to compile on Linux 6.8** due to major changes in the kernel. Below is a structured breakdown of **what's broken and why.**  
+
+### **1. Deprecated or Removed Kernel Functions**  
+  - Several functions were removed or significantly changed eg:  
+    - `revalidate_disk()`, `blkdev_get()`, and `bdget()` no longer exist.  
+    - The `SCp` field was removed from `struct scsi_cmnd`, breaking driver-private data storage.  
+    - `scsi_done()` is **deprecated** and must be removed in favor of return-based command completion.  
+
+### **2. Outdated PCI, DMA, and SCSI Handling**  
+  - The driver relies on **legacy PCI and SCSI interfaces** that have been replaced by modern APIs.  
+  - `virt_to_bus()` is **gone** and must be replaced with `dma_map_single()`.  
+  - `pci_set_dma_mask()` handling needs to be updated to avoid breaking DMA setup.  
+
+### **3. Block Device & Major Number Issues**  
+  - `SCSI_DISKx_MAJOR` macros were removed long ago, but the driver still references them.  
+  - The driver uses outdated block device functions like `blkdev_get()` and `bdget()`, which need to be replaced with `blkdev_get_by_dev()`.  
+
+### **4. Obsolete RAID & Array Logic (Possibly Unnecessary)**  
+  - The driver references **old RAID structures** (`pVDev->u.array`, `pVDev->u.partition`), which may no longer be needed.  
+  - If **only JBOD is required**, RAID-related logic should be **removed** to simplify the codebase.  
+
+✅ **What’s Already Fixed:**  
+  - **The kernel version check in `Makefile.def` was updated**, so the driver no longer blocks compilation on kernel 6.x.  
+  - **Build errors have been identified and documented**, allowing for targeted fixes.  
+
+---
+
 
 ## **Modernization Roadmap** (What Needs to Be Done)
 
