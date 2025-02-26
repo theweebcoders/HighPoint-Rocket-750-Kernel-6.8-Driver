@@ -189,7 +189,7 @@ By following this roadmap and keeping detailed records in the changelog, we aim 
 
 ---
 
-📢 Note from the Maintainer
+### 📢 Note from the Maintainer
 
 Okay, let’s get something out of the way right now: I have no idea what I’m doing.
 
@@ -255,7 +255,7 @@ I don’t care how long it takes. I’m going to get this driver working on Linu
 
   But hey, if you’re here, that probably means you need this driver to work just as badly as I do. So let’s suffer together.
 
----
+
 
 ## License (Or Lack Thereof)
 
