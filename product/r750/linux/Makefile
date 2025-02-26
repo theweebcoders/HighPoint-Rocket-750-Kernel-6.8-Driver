@@ -1,18 +1,39 @@
-# $Id: Makefile,v 1.6 2009/12/11 00:47:48 wsw Exp $
-#
+# HighPoint R750 Driver Makefile
 # Copyright (C) 2012 HighPoint Technologies, Inc.
 # All Rights Reserved.
-#
 
-HPT_ROOT := ../../..
+KERNELDIR := /lib/modules/6.8.0-40-generic/build
+PWD := /home/ubuntu/Documents/r750_source/product/r750/linux
 
-C_DEFINES := -DSUPPORT_ARRAY 
+# Driver module name
+obj-m := r750.o
 
-TARGETNAME := r750
-TARGETTYPE := KMOD
-TARGETMODS := him_r750.o ldm_la.o
-TARGETOBJS := os_linux.o osm_linux.o div64.o hptinfo.o config.o
+# Corrected source file paths (relative to M=$(PWD))
+r750-objs := ../../../osm/linux/os_linux.o \
+             ../../../osm/linux/osm_linux.o \
+             ../../../osm/linux/div64.o \
+             ../../../osm/linux/hptinfo.o \
+             ./config.o \
+             ../../../lib/linux_64mpa/free-x86_64-regparm0/him_r750.o \
+             ../../../lib/linux_64mpa/free-x86_64-regparm0/ldm_la.o
 
-include $(HPT_ROOT)/inc/linux_64mpa/Makefile.def
+# Compiler flags (FULL ABSOLUTE PATHS)
+EXTRA_CFLAGS += -I/home/ubuntu/Documents/r750_source/osm/linux \
+                -I/home/ubuntu/Documents/r750_source/product/r750/linux \
+                -I/home/ubuntu/Documents/r750_source/inc \
+                -I/home/ubuntu/Documents/r750_source/inc/linux_64mpa
 
-$(TARGETOBJS): osm_linux.h
+all:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+
+clean:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
+	rm -f $(PWD)/*.ko $(PWD)/*.o $(PWD)/*.mod.o $(PWD)/*.mod.c $(PWD)/Module.symvers $(PWD)/modules.order
+
+install:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules_install
+	depmod -a
+
+uninstall:
+	rm -f /lib/modules/$(shell uname -r)/extra/r750.ko
+	depmod -a

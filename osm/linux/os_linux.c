@@ -321,19 +321,87 @@ HPT_U16 BE16_TO_CPU(HPT_U16 x) { return be16_to_cpu(x); }
 #define __BDEV_RAW , BDEV_RAW
 #endif
 
+/* In 5.9+ revalidate_disk(bdev->bd_disk) is used instead of
+	* bdev->bd_disk->fops->revalidate_disk()
+	*/
+static inline void hpt_revalidate_disk(struct block_device *bdev)
+{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,9,0)
+	if (bdev->bd_disk->fops && bdev->bd_disk->fops->revalidate_disk)
+		bdev->bd_disk->fops->revalidate_disk(bdev->bd_disk);
+#else
+	revalidate_disk(bdev->bd_disk);
+#endif
+}
+
+int os_query_remove_device(void *osext, int id)
+{
+	PVBUS_EXT vbus_ext = osext;
+	return (vbus_ext->sd_flags[id] & SD_FLAG_IN_USE)? 1 : 0;
+}
+
+/*
+	* For kernel >=5.10, we must replace old direct blkdev_get usage.
+	* We'll define a helper macro that returns 0 on success, else negative.
+	*/
+static inline int hpt_blkdev_get(struct block_device *bdev)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0)
+	struct block_device *b = blkdev_get_by_dev(bdev->bd_dev, FMODE_READ, NULL);
+	if (IS_ERR(b)) return PTR_ERR(b);
+	/* If success, we rely on the same bdev pointer usage. */
+#else
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38)
+	if (blkdev_get(bdev, FMODE_READ, NULL))
+		return -1;
+	#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,28)
+	if (blkdev_get(bdev, FMODE_READ))
+		return -1;
+	#else
+	if (blkdev_get(bdev, FMODE_READ, 0 __BDEV_RAW))
+		return -1;
+	#endif
+#endif
+	return 0;
+}
+
+static inline void hpt_blkdev_put(struct block_device *bdev)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0)
+	blkdev_put(bdev, FMODE_READ);
+#else
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38)
+	blkdev_put(bdev, FMODE_READ, NULL);
+	#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,28)
+	blkdev_put(bdev, FMODE_READ);
+	#else
+	blkdev_put(bdev __BDEV_RAW);
+	#endif
+#endif
+}
+
+/* refresh_sd_flags is used to revalidate or remove scsi device usage. */
 void refresh_sd_flags(PVBUS_EXT vbus_ext)
 {
-	static int major[] = { SCSI_DISK0_MAJOR, SCSI_DISK1_MAJOR, SCSI_DISK2_MAJOR, SCSI_DISK3_MAJOR, 
-				SCSI_DISK4_MAJOR, SCSI_DISK5_MAJOR, SCSI_DISK6_MAJOR, SCSI_DISK7_MAJOR, 
-				SCSI_DISK8_MAJOR, SCSI_DISK9_MAJOR, SCSI_DISK10_MAJOR, SCSI_DISK11_MAJOR, 
-				SCSI_DISK12_MAJOR, SCSI_DISK13_MAJOR, SCSI_DISK14_MAJOR, SCSI_DISK15_MAJOR, 0 };
+	static int major[] = {
+		SCSI_DISK0_MAJOR, SCSI_DISK1_MAJOR, SCSI_DISK2_MAJOR, SCSI_DISK3_MAJOR,
+		SCSI_DISK4_MAJOR, SCSI_DISK5_MAJOR, SCSI_DISK6_MAJOR, SCSI_DISK7_MAJOR,
+		SCSI_DISK8_MAJOR, SCSI_DISK9_MAJOR, SCSI_DISK10_MAJOR, SCSI_DISK11_MAJOR,
+		SCSI_DISK12_MAJOR, SCSI_DISK13_MAJOR, SCSI_DISK14_MAJOR, SCSI_DISK15_MAJOR, 0
+	};
 	int id;
 	Scsi_Device *SDptr;
 
 	vbus_ext->needs_refresh = 0;
 	
 	for (id=0; id<osm_max_targets; id++) {
-		
+		if (vbus_ext->sd_flags[id] & SD_FLAG_REMOVE) {
+			vbus_ext->sd_flags[id] &= ~SD_FLAG_REMOVE;
+			scsi_remove_device(scsi_device_lookup(vbus_ext->host, 0, id, 0));
+		}
+	}
+
+	for (id=0; id<osm_max_targets; id++) {
 		SDptr = scsi_device_lookup(vbus_ext->host, 0, id, 0);
 		
 		vbus_ext->sd_flags[id] &= ~SD_FLAG_IN_USE;
@@ -343,39 +411,30 @@ void refresh_sd_flags(PVBUS_EXT vbus_ext)
 			for (i=0; major[i]; i++) {
 				for (minor=0; minor<=240; minor+=16) {
 					struct block_device *bdev = bdget(MKDEV(major[i], minor));
-					if (bdev &&
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38)
-						blkdev_get(bdev, FMODE_READ,NULL)
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,28)
-						blkdev_get(bdev, FMODE_READ)
-#else 
-						blkdev_get(bdev, FMODE_READ, 0 __BDEV_RAW)
-#endif
-						==0) {
+					if (bdev && !hpt_blkdev_get(bdev)) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,8,0)
 						if (bdev->bd_disk && ((disk_to_dev(bdev->bd_disk)->parent)==&SDptr->sdev_gendev)) {
 #else 
 						if (bdev->bd_disk && bdev->bd_disk->driverfs_dev==&SDptr->sdev_gendev) {
 #endif
 							if (vbus_ext->sd_flags[id] & SD_FLAG_REVALIDATE) {
-								if (bdev->bd_disk->fops->revalidate_disk)
-									bdev->bd_disk->fops->revalidate_disk(bdev->bd_disk);
+								hpt_revalidate_disk(bdev);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,15)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0)
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0)
 								inode_lock(bdev->bd_inode);
-#else 
+	#else
 								mutex_lock(&bdev->bd_inode->i_mutex);
-#endif
+	#endif
 #else 
 								down(&bdev->bd_inode->i_sem);
 #endif
 								i_size_write(bdev->bd_inode, (loff_t)get_capacity(bdev->bd_disk)<<9);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,15)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0)
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0)
 								inode_unlock(bdev->bd_inode);
-#else 
+	#else
 								mutex_unlock(&bdev->bd_inode->i_mutex);
-#endif
+	#endif
 #else 
 								up(&bdev->bd_inode->i_sem);
 #endif
@@ -383,18 +442,10 @@ void refresh_sd_flags(PVBUS_EXT vbus_ext)
 							}
 							if (bdev->bd_openers>1)
 								vbus_ext->sd_flags[id] |= SD_FLAG_IN_USE;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,28)
-							blkdev_put(bdev, FMODE_READ);
-#else 
-							blkdev_put(bdev __BDEV_RAW);
-#endif
+							hpt_blkdev_put(bdev);
 							goto next;
 						}
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,28)
-						blkdev_put(bdev, FMODE_READ);
-#else 
-						blkdev_put(bdev __BDEV_RAW);
-#endif
+						hpt_blkdev_put(bdev);
 					}
 				}
 			}
@@ -404,82 +455,31 @@ next:
 	}
 }
 
-int os_query_remove_device(void *osext, int id)
+int os_revalidate_device(void *osext, int id)
 {
 	PVBUS_EXT vbus_ext = osext;
-	return (vbus_ext->sd_flags[id] & SD_FLAG_IN_USE)? 1 : 0;
-}
-
-struct sd_change_wrapper
-{
-	struct work_struct work;
-	struct Scsi_Host *host;
-	int id;
-	int to_register;
-};
-
-static void os_sd_changed(struct work_struct *work)
-{
-	struct scsi_device *sdev;
-	struct sd_change_wrapper *change = container_of(work, struct sd_change_wrapper, work);
-	
-	if (change->to_register) {
-		void *ptr = (void *)(HPT_UPTR)scsi_add_device(change->host, 0, change->id, 0);
-		if (ptr && IS_ERR(ptr))
-			os_printk("Add scsi device id%d failed", change->id);
-	}
-	else {
-		sdev = scsi_device_lookup(change->host, 0, change->id, 0);
-		if (sdev != NULL) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 23)
-			
-			scsi_device_cancel(sdev, 0);
-#endif
-			scsi_remove_device(sdev);
-			scsi_device_put(sdev);
-		}
-	}
-	kfree(change);
-}
-
-static void sched_sd_change(void *osext, int id, int to_register)
-{
-	PVBUS_EXT vbus_ext = osext;
-	struct Scsi_Host *host = vbus_ext->host;
-	struct sd_change_wrapper *sd_change;
-
-	sd_change = kmalloc(sizeof(*sd_change), GFP_ATOMIC);
-	if (!sd_change) {
-		os_printk("sd_change mem alloc failed");
-		return;
-	}
-	
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 20)
-	INIT_WORK(&sd_change->work, (void (*)(void *))os_sd_changed, &sd_change->work);
-#else 
-	INIT_WORK(&sd_change->work, os_sd_changed);
-#endif
-
-	sd_change->id = id;
-	sd_change->host = host;
-	sd_change->to_register = to_register;
-
-	if (schedule_work(&sd_change->work) == 0) {
-		os_printk("schedule_work failed");
-		kfree(sd_change);
-	}
+	vbus_ext->sd_flags[id] |= SD_FLAG_REVALIDATE;
+	vbus_ext->needs_refresh = 1;
+	return 0;
 }
 
 void os_register_device(void *osext, int id)
 {
 	KdPrint(("register device %x", id));
-	sched_sd_change(osext, id, 1);
+	{
+		/* For kernel 2.6+ we do scsi_add_device in a scheduled work. */
+		struct scsi_device *ptr = scsi_add_device(((PVBUS_EXT)osext)->host, 0, id, 0);
+		if (IS_ERR(ptr))
+			os_printk("Add scsi device id%d failed", id);
+		else
+			scsi_device_put(ptr);
+	}
 }
 
 void os_unregister_device(void *osext, int id)
 {
 	KdPrint(("unregister device %x", id));
-	sched_sd_change(osext, id, 0);
+	scsi_remove_device(scsi_device_lookup(((PVBUS_EXT)osext)->host, 0, id, 0));
 }
 
 #else /* 2.4.x */
@@ -583,8 +583,6 @@ void os_unregister_device(void *osext, int id)
 	vbus_ext->needs_refresh = 1;
 }
 
-#endif
-
 int os_revalidate_device(void *osext, int id)
 {
 	PVBUS_EXT vbus_ext = osext;
@@ -593,11 +591,9 @@ int os_revalidate_device(void *osext, int id)
 	return 0;
 }
 
-/*
- * shall be called with vbus_ext->lock hold.
- * there is one exception: os_schedule_task can be called at init time
- * before the worker tasklet is initialized.
- */
+#endif
+
+/* task scheduling */
 void os_schedule_task(void *osext, OSM_TASK *task)
 {
 	PVBUS_EXT vbus_ext = osext;
@@ -652,9 +648,11 @@ void  os_request_timer(void * osext, HPT_U32 interval)
 	HPT_ASSERT(vbus_ext->ext_type==EXT_TYPE_VBUS);
 	
 	del_timer(&vbus_ext->timer);
-	vbus_ext->timer.function = os_timer_for_ldm;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 	vbus_ext->timer.data = (unsigned long)vbus_ext;
+	vbus_ext->timer.function = os_timer_for_ldm;
+#else
+	timer_setup(&vbus_ext->timer, os_timer_for_ldm, 0);
 #endif
 	vbus_ext->timer.expires = jiffies + 1 + interval / (1000000/HZ);
 	add_timer(&vbus_ext->timer);
@@ -731,7 +729,6 @@ void os_check_stack(const char *location, int size)
 	if (esp - sizeof(struct task_struct) < size) {
 #endif
 		printk("*** %s: stack too small (0x%lx) ***\n", location, esp);
-		/* dump_stack(); while (1); */
 	}
 #endif
 }
