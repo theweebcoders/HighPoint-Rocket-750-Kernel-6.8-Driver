@@ -64,35 +64,21 @@ This repository contains the **open-source driver for the HighPoint Rocket 750 H
 
 ```
 
-## **Current Issues & Compatibility Challenges**  
+## Current Issues & Compatibility Challenges
 
-The **Rocket 750 driver** was originally written for **kernels 2.4/2.6** and patched to support **kernel 5.2.x**, but it **fails to compile on Linux 6.8** due to major changes in the kernel. Below is a structured breakdown of **what's broken and why.**  
+The HighPoint Rocket 750 driver was originally designed for much older Linux kernels and has only seen minimal updates over the years. Unfortunately, modern kernels—including Linux 6.8—have introduced major changes that break compatibility.
 
-### **1. Deprecated or Removed Kernel Functions**  
-  - Several functions were removed or significantly changed eg:  
-    - `revalidate_disk()`, `blkdev_get()`, and `bdget()` no longer exist.  
-    - The `SCp` field was removed from `struct scsi_cmnd`, breaking driver-private data storage.  
-    - `scsi_done()` is **deprecated** and must be removed in favor of return-based command completion.  
+Some of the biggest challenges include:
 
-### **2. Outdated PCI, DMA, and SCSI Handling**  
-  - The driver relies on **legacy PCI and SCSI interfaces** that have been replaced by modern APIs.  
-  - `virt_to_bus()` is **gone** and must be replaced with `dma_map_single()`.  
-  - `pci_set_dma_mask()` handling needs to be updated to avoid breaking DMA setup.  
+-	The driver relies on outdated kernel functions that no longer exist or work differently in modern versions.
+-	Changes in how Linux handles PCI devices, storage, and memory management cause build failures and runtime issues.
+-	The block device and RAID handling in the driver are based on legacy systems that may not even be necessary anymore.
+-	Core SCSI and DMA operations have been updated, making the driver’s current implementation incompatible.
+-	There’s little to no documentation on how this driver was originally meant to function, making troubleshooting difficult.
 
-### **3. Block Device & Major Number Issues**  
-  - `SCSI_DISKx_MAJOR` macros were removed long ago, but the driver still references them.  
-  - The driver uses outdated block device functions like `blkdev_get()` and `bdget()`, which need to be replaced with `blkdev_get_by_dev()`.  
+At this point, the driver does not compile or load properly on Linux 6.8, and even if it did, there’s no guarantee that it would function correctly. The goal of this project is to reverse-engineer what’s broken, update what’s needed, and get it working again.
 
-### **4. Obsolete RAID & Array Logic (Possibly Unnecessary)**  
-  - The driver references **old RAID structures** (`pVDev->u.array`, `pVDev->u.partition`), which may no longer be needed.  
-  - If **only JBOD is required**, RAID-related logic should be **removed** to simplify the codebase.  
-
-✅ **What’s Already Fixed:**  
-  - **The kernel version check in `Makefile.def` was updated**, so the driver no longer blocks compilation on kernel 6.x.  
-  - **Build errors have been identified and documented**, allowing for targeted fixes.  
-
----
-
+For a more detailed breakdown of specific issues and planned fixes, see the Modernization Roadmap below.
 
 ## **Modernization Roadmap** (What Needs to Be Done)
 
