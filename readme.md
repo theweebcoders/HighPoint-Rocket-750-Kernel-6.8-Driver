@@ -100,76 +100,138 @@ Community reports indicate that while the original driver (v1.2.14) was patched 
 └── install.sh           # Top-level installer script
 ```
 
----
+## **Modernization Roadmap** (What Needs to Be Done)
 
-## 🔧 Modernization Roadmap
+The following steps outline the process to modernize the Rocket 750 driver for **Linux Kernel 6.8**.  
 
-The following steps outline the process to modernize the driver for Linux Kernel 6.8:
+Each step is a **standalone task** that can be worked on independently. The goal is to **systematically replace outdated code** while keeping track of completed work.  
 
-### 1. Update Kernel-Dependent Code
+### **Compatibility Layer & Build Fixes**  
+**✅ Status: Partially Completed (Makefile.def updated, build process partially working)**  
 
-- **Replace or Stub `virt_to_bus()`:**  
-  Replace legacy DMA conversion calls with modern DMA mapping functions or temporary stubs.
+**Create a Compatibility Header (`compat.h`)**
+   - **Problem:** The driver references missing macros/functions (`virt_to_bus`, `SCSI_DISKx_MAJOR`, `CHECK_CONDITION`, etc.).
+   - **Solution:** Create `compat.h` to define stubs for missing macros and deprecated functions.
+   - **Tasks:**  
+     - **Define a replacement for `virt_to_bus()`** (e.g., use `virt_to_phys()` for now).  
+     - **Stub out `SCSI_DISKx_MAJOR` macros** (set them to `0`).  
+     - **Define `CHECK_CONDITION`, `GOOD`, `DRIVER_SENSE`, etc.** if missing.  
+     - **Stub out `scsi_done()` calls.**  
+     - **Include `compat.h` in `osm_linux.h` and other relevant files.**  
+     - **Recompile and verify that missing macro errors are resolved.**  
 
-- **Remove Outdated SCSI Macros & Fields:**  
-  Eliminate legacy macros such as `SCSI_DISKx_MAJOR` and fields like `SCp` from `struct scsi_cmnd`.  
-  Update error reporting to use functions like `scsi_build_sense_buffer()`.
-
-- **Modernize the SCSI Host Template:**  
-  Remove deprecated fields (`detect`, `release`, etc.) and implement a modern `queuecommand()` routine.
-
-- **Update PCI & Interrupt Handling:**  
-  Replace legacy PCI API calls and interrupt flags (e.g. `SA_SHIRQ`) with modern equivalents such as `IRQF_SHARED` and use updated timer APIs (`timer_setup()`).
-
-- **Refactor DMA and SG List Code:**  
-  Use the standard Linux scatterlist API and update block device get/put operations through helper functions.
-
-- **Remove Legacy Block Device & Revalidation Code:**  
-  Rely on the SCSI and block subsystems for device revalidation.
-
-### 2. Update the Build System
-
-- **Clean Up Makefiles and Scripts:**  
-  Modify `Makefile.def` to allow kernel 6.x and update paths (e.g. `KERNELDIR`), remove obsolete flags, and adjust the installer scripts.
-
-- **Update Module Parameters & Sysfs Interfaces:**  
-  Use modern macros (`module_param()`, `MODULE_PARM_DESC()`) and current sysfs APIs.
-
-### 3. Refactor and Simplify the Driver Architecture
-
-- **Rework the LDM and Array Layers:**  
-  Evaluate and simplify RAID/array support (or stub if only JBOD is required).
-
-- **Modernize Error Handling and Sense Data Reporting:**  
-  Replace manual sense-buffer handling with modern helper functions.
-
-- **Remove Legacy Private Data Storage:**  
-  Eliminate reliance on removed fields like `SCp` and use alternative storage (e.g., hostdata pointers).
-
-### 4. Documentation & Changelog
-
-- **Inline Documentation:**  
-  Add comments in each file explaining the purpose of modifications.
-
-- **Changelog:**  
-  Maintain a `CHANGELOG.md` documenting every major change.
+**Update the Build System (Done)**
+   - **✅ Status: Completed (Makefile.def updated, build errors partially fixed).**
+   - **Remaining Work:**  
+     - Verify Makefile paths to ensure `KERNELDIR` is correctly set.  
+     - Run `make` after all compatibility fixes are applied to check for new errors.  
 
 ---
 
-## Next Steps
+### **Fixing Obsolete DMA & PCI Calls**
+**✅ Status: Not Started**  
 
-1. **Phase 1 – Build System Update:**  
-   - Confirm that the updated Makefile and installer scripts work across target distributions.
+**Replace `virt_to_bus()` With DMA API**  
+   - **Problem:** `virt_to_bus()` was removed from the kernel long ago.  
+   - **Solution:** Replace it with `dma_map_single()` and `dma_alloc_coherent()`.  
+   - **Tasks:**  
+     - Locate all instances of `virt_to_bus()` (e.g., in `os_linux.c`, `osm_linux.c`).  
+     - Replace them with:  
+       ```c
+       dma_addr_t dma_addr = dma_map_single(&pcidev->dev, ptr, size, DMA_BIDIRECTIONAL);
+       if (dma_mapping_error(&pcidev->dev, dma_addr)) {
+           // Handle error
+       }
+       ```
+     - Ensure `dma_unmap_single()` is properly used to clean up DMA mappings.  
+     - Verify all changes compile correctly.  
 
-2. **Phase 2 – Code Modernization:**  
-   - Continue replacing deprecated kernel calls and updating interfaces as needed.
-
-3. **Phase 3 – Testing & Documentation:**  
-   - Compile the driver against the 6.8 headers.
-   - Perform runtime tests and update documentation with any further modifications.
-   - Prepare the final working version for release.
+4. **Update PCI Handling (`pci_set_dma_mask`)**  
+   - **Problem:** `pci_set_dma_mask()` isn’t called properly, causing errors.  
+   - **Solution:** Ensure that `pci_set_dma_mask()` is used correctly with error handling.  
+   - **Tasks:**  
+     - Locate all calls to `pci_set_dma_mask()`.  
+     - Replace with:  
+       ```c
+       if (dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64))) {
+           dev_err(&pdev->dev, "No suitable DMA support found.\n");
+           return -EIO;
+       }
+       ```
+     - Verify that the driver correctly initializes PCI DMA.  
 
 ---
+
+### **SCSI & Block Device Updates**
+**✅ Status: Not Started**  
+
+**Fix Deprecated SCSI Macros & Status Codes**  
+   - **Problem:** Macros like `CHECK_CONDITION`, `DRIVER_SENSE`, `GOOD`, `SUGGEST_ABORT` are missing.  
+   - **Solution:** Replace them with standard SCSI status handling.  
+   - **Tasks:**  
+     - Define missing macros in `compat.h`.  
+     - Replace manual sense data handling with:  
+       ```c
+       scsi_build_sense_buffer(0, SCpnt->sense_buffer, /* sense key */ 0x3, /* asc */ 0x11, /* ascq */ 0x04);
+       SCpnt->result = (DID_OK << 16) | COMMAND_COMPLETE;
+       ```
+     - Verify that error reporting works correctly.  
+
+**Remove `scsi_done()` Calls (Use Return Codes Instead)**  
+   - **Problem:** The driver still uses `scsi_done()`, which is obsolete.  
+   - **Solution:** Modify `queuecommand()` to return status codes instead of calling `scsi_done()`.  
+   - **Tasks:**  
+     - Locate all instances of `SCpnt->scsi_done(SCpnt)`.  
+     - Modify `queuecommand()` to return:  
+       - `SCSI_MLQUEUE_HOST_BUSY` (if queue is full)  
+       - `0` (if the command is successfully queued)  
+     - Test to ensure that command completion is handled correctly.  
+
+**Fix Block Device Calls (`blkdev_get()`, `blkdev_put()`)**  
+   - **Problem:** The driver uses outdated functions that no longer exist.  
+   - **Solution:** Replace them with modern equivalents.  
+   - **Tasks:**  
+     - Replace `blkdev_get()` calls with:  
+       ```c
+       struct block_device *b = blkdev_get_by_dev(bdev->bd_dev, FMODE_READ, NULL);
+       if (IS_ERR(b)) return PTR_ERR(b);
+       ```
+     - Replace `blkdev_put()` calls with:  
+       ```c
+       blkdev_put(bdev, FMODE_READ);
+       ```
+     - Remove `revalidate_disk()` calls (since revalidation is now automatic).  
+
+---
+
+### **Removing Unnecessary RAID/Array Code**
+**✅ Status: Not Started**  
+
+**Remove or Refactor RAID Handling (`pVDev->u.array`)**  
+   - **Problem:** The driver references old RAID structures (`pVDev->u.array`), which may not be needed.  
+   - **Solution:** If only JBOD is required, remove RAID-related logic.  
+   - **Tasks:**  
+     - Identify all uses of `pVDev->u.array`, `pVDev->u.partition`, etc.  
+     - If RAID is **not needed**, remove references.  
+     - If RAID **is needed**, ensure the logic aligns with the modern SCSI stack.  
+
+---
+
+### **Testing & Debugging**
+**✅ Status: Testing and debugging are continuous processes that should be performed after each fix to ensure the driver functions correctly.**  
+
+**Test the Driver After Each Fix**  
+   - **Tasks:**  
+     - Compile the driver (`make -j$(nproc)`).  
+     - Load the module (`insmod r750.ko`).  
+     - Run `dmesg` to check for errors.  
+     - Run `lsblk` and `fdisk -l` to verify drive detection.  
+
+ **Update Documentation & Changelog**  
+   - **Tasks:**  
+     - Log each fix in `CHANGELOG.md`.  
+     - Add inline comments explaining major changes.  
+
 
 ## References
 
