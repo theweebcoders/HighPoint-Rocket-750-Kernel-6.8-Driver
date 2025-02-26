@@ -3,6 +3,8 @@
 # All Rights Reserved.
 
 KERNELDIR := /lib/modules/6.8.0-40-generic/build
+
+# This is really BAD we should not hardcode the path but it was the only way I could get it to even try to compile
 PWD := /home/ubuntu/Documents/r750_source/product/r750/linux
 
 # Driver module name
