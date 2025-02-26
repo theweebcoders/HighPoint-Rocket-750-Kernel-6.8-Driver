@@ -249,9 +249,9 @@ I don’t know what I’m doing, but I’m going to keep slamming my head agains
 So, if you actually know what you’re doing, please, for the love of everything, submit a pull request. Tell me my code is garbage. Rip apart my changes. Revert my nonsense. I do not care. You cannot hurt my feelings because I already know how bad this is.
 
 If you’re one of those people who sees this and thinks, “I could fix this in a weekend, but I don’t have time,” let me just say this:
-	•	If this is a side project for you and you can only contribute every couple of weeks, just PR your changes.
-	•	If you want to take over and you’re actually going to be active, by all means, do it.
-	•	If you just want to laugh at my suffering, honestly, fair.
+  -	If this is a side project for you and you can only contribute every couple of weeks, just PR your changes.
+  -	If you want to take over and you’re actually going to be active, by all means, do it.
+  -	If you just want to laugh at my suffering, honestly, fair.
 
 But if no one else is going to do it, then I guess it’s down to me.
 
@@ -269,9 +269,9 @@ I don’t care how long it takes. I’m going to get this driver working on Linu
 
   I bought a 45 Drives 60-bay server from some guy on Facebook Marketplace. It came with HighPoint Rocket 750 HBAs, which are great except for one problem:
 
-    •	The drivers only work up to Linux Kernel 5.x
-    •	Unraid is Kernel 6.8
-    •	I use consumer-grade hardware with only two PCIe x8 slots.
+  -	The drivers only work up to Linux Kernel 5.x
+  -	Unraid is Kernel 6.8
+  -	I use consumer-grade hardware with only two PCIe x8 slots.
 
   If I want modern HBAs, I need three or four of them—which would cost a stupid amount of money and require new cables that don’t exist in the quantity I need.
 
@@ -283,13 +283,31 @@ I don’t care how long it takes. I’m going to get this driver working on Linu
 
 **Q: Can I help?**
 
-    •	If you know how to fix it, PR your changes on GitHub.
-    •	If you have patches for older kernels, I’d love to see them.
-    •	If you want to just watch me suffer, fair enough.
+  - If you know how to fix it, PR your changes on GitHub.
+  - If you have patches for older kernels, I’d love to see them.
+  - If you want to just watch me suffer, fair enough.
 
   This is a community effort, so if you want to see Rocket 750s working on modern Linux, let’s make it happen.
 
-Q: You say you don’t know what you’re doing, but this README has a very clear roadmap. What’s the deal?
+**Q: I tried looking at your changelogs, and half of your commits are just updates to the README. Why do you keep making small incremental updates instead of just updating it all at once? It makes your commit history impossible to read.**
+
+  Great question. There are actually two very good reasons for this:
+
+  1.	I don’t actually know what I’m doing.
+
+  If I change something in the README and later realize it was a terrible idea, I want an easy way to go back and see what it originally said.
+
+  I could be removing vital information and have no way of realizing it at the time. Small commits make it easier to track what I’ve done and undo any mistakes.
+
+  2.	This is my favorite way to procrastinate.
+
+  I could be fixing the driver and doing something productive, but instead, I’m tweaking the README because it makes me feel like I’m making progress without actually doing any hard work.
+
+  If you think this is a bad habit… yeah, it probably is. But here we are.
+
+  So yeah, don’t judge me. Or do, whatever, I’m too busy rewriting the README for the 40th time to care.
+
+**Q: You say you don’t know what you’re doing, but this README has a very clear roadmap. What’s the deal?**
 
   Great question. The roadmap is almost entirely made up.
 
@@ -315,11 +333,11 @@ Q: You say you don’t know what you’re doing, but this README has a very clea
 
 This project follows The Weeb Coders’ core rule:
 
-	•	No license.
-	•	No restrictions.
-	•	No limitations.
-	•	No attribution required.
-	•	No copyright nonsense.
+-	No license.
+-	No restrictions.
+-	No limitations.
+-	No attribution required.
+-	No copyright nonsense.
 
 You can do whatever the hell you want with this code. Modify it, sell it, use it in a commercial project, burn it onto a CD and bury it in the desert—we do not care.
 
@@ -327,7 +345,7 @@ Everything here is free.
 
 ---
 
-Join Us on Discord
+## Join Us on Discord
 
 Want to chat, contribute, or just watch the chaos unfold?
 Join The Weeb Coders on Discord: https://discord.com/invite/S7NcUdhKRD
