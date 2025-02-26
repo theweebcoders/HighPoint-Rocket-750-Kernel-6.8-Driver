@@ -262,6 +262,7 @@ I don’t care how long it takes. I’m going to get this driver working on Linu
 	“There is no license.”
 
 This project follows The Weeb Coders’ core rule:
+
 	•	No license.
 	•	No restrictions.
 	•	No limitations.
