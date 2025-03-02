@@ -1,3 +1,13 @@
+🚨 Project Archived – Thanks, Cunningham’s Law! 🚨
+
+Well, that was a colossal waste of time. Turns out, instead of rewriting a kernel driver from the depths of hell, I could have just used SAS expanders—a fact that Reddit graciously pointed out immediately after I started this project. So, rather than continuing this noble but ultimately pointless quest, I’m archiving this repo.
+
+Not just for posterity, but as a monument to my own suffering—a constant reminder that no matter how much time you spend researching, there’s always someone on the internet who already solved your problem years ago and is just waiting for you to be wrong so they can correct you.
+
+So yeah. If you’re here because you need Rocket 750 support on Linux 6.8+, save yourself the pain and look into SAS expanders instead. Or, if you’re a masochist, feel free to continue where I left off. Either way, I’m out.
+
+---
+
 # HighPoint Rocket 750 Kernel 6.8 Driver Patching
 
 ## Overview
